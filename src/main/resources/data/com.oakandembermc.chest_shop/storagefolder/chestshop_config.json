@@ -1,0 +1,6 @@
+{
+    "chestShopsEnabled": true,
+    "maxShopsPerPlayer": -1,
+    "shopCreationCost": 0,
+    "transactionTax": 0
+}

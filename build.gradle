@@ -16,7 +16,7 @@ loom {
 	splitEnvironmentSourceSets()
 
 	mods {
-		"modid" {
+		"chestshop" {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
 		}
@@ -84,26 +84,26 @@ publishing {
             }
         }
     }
-    repositories {
-        maven {
-            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-            credentials {
-                username = env.repoUsername.value
-                password = env.repoPassword.value
-            }
-        }
-    }
+    // repositories {
+    //     maven {
+    //         url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+    //         credentials {
+    //             username = env.repoUsername.value
+    //             password = env.repoPassword.value
+    //         }
+    //     }
+    // }
 }
 
-signing {
-	// Key is in a separate file, signingKey.asc
-	def keyFile = file("signingKey.asc")
-    def signingKey = keyFile.text
-    def signingPassword = env.signing_password.value
-    if (signingKey && signingPassword) {
-        useInMemoryPgpKeys(signingKey, signingPassword)
-    } else {
-        logger.lifecycle("Signing key or password not provided; skipping signing configuration.")
-    }
-    sign publishing.publications.mavenJava
-}
+// signing {
+// 	// Key is in a separate file, signingKey.asc
+// 	def keyFile = file("signingKey.asc")
+//     def signingKey = keyFile.text
+//     def signingPassword = env.signing_password.value
+//     if (signingKey && signingPassword) {
+//         useInMemoryPgpKeys(signingKey, signingPassword)
+//     } else {
+//         logger.lifecycle("Signing key or password not provided; skipping signing configuration.")
+//     }
+//     sign publishing.publications.mavenJava
+// }

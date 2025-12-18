@@ -1,9 +1,9 @@
 {
 	"schemaVersion": 1,
-	"id": "economy",
-	"version": "0.0.1-alpha",
+	"id": "chestshop",
+	"version": "${version}",
 	"name": "Oak and Ember Chest Shop Mod",
-	"description": "First iteration of a basic chest shop mod for Fabric.",
+	"description": "A basic chest shop mod for Fabric. Create player-owned shops using chests.",
 	"authors": [
 		"Alex Bentley"
 	],
@@ -23,7 +23,7 @@
 	},
 	"depends": {
 		"fabricloader": ">=0.16.10",
-		"minecraft": "~1.21.3",
+		"minecraft": "~1.21.9",
 		"java": ">=21",
 		"fabric-api": "*"
 	}

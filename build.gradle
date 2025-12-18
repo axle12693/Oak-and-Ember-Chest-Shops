@@ -1,0 +1,109 @@
+plugins {
+	id 'fabric-loom' version '1.14-SNAPSHOT'
+	id 'maven-publish'
+	id("co.uzzu.dotenv.gradle") version "4.0.0"
+	id "signing"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"modid" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+}
+
+processResources {
+	inputs.property "version", project.version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": inputs.properties.version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+}
+
+java {
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+jar {
+	inputs.property "archivesName", project.base.archivesName
+
+	from("LICENSE") {
+		rename { "${it}_${inputs.properties.archivesName}"}
+	}
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = project.archives_base_name
+            from components.java
+            pom {
+                name = 'Chest Shop Mod'
+                packaging = 'jar'
+                description = 'First iteration of a basic chest shop mod for Fabric.'
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'axle12693'
+                        name = 'Alex Bentley'
+                        email = 'axle12693@gmail.com'
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+            credentials {
+                username = env.repoUsername.value
+                password = env.repoPassword.value
+            }
+        }
+    }
+}
+
+signing {
+	// Key is in a separate file, signingKey.asc
+	def keyFile = file("signingKey.asc")
+    def signingKey = keyFile.text
+    def signingPassword = env.signing_password.value
+    if (signingKey && signingPassword) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+    } else {
+        logger.lifecycle("Signing key or password not provided; skipping signing configuration.")
+    }
+    sign publishing.publications.mavenJava
+}

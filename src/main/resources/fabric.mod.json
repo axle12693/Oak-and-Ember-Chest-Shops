@@ -1,0 +1,30 @@
+{
+	"schemaVersion": 1,
+	"id": "economy",
+	"version": "0.0.1-alpha",
+	"name": "Oak and Ember Chest Shop Mod",
+	"description": "First iteration of a basic chest shop mod for Fabric.",
+	"authors": [
+		"Alex Bentley"
+	],
+	"contact": {
+		"email": "axle12693@gmail.com"
+	},
+	"license": "Apache2.0",
+	"icon": "assets/modid/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.oakandembermc.ChestShopMod"
+		],
+		"client": [
+			"com.oakandembermc.ChestShopModClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.16.10",
+		"minecraft": "~1.21.3",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

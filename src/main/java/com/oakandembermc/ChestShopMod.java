@@ -45,6 +45,9 @@ public class ChestShopMod implements ModInitializer {
         // Initialize shop manager
         ShopManager.initialize(storageFolder.toPath());
         
+        // Initialize the public API
+        ChestShopAPI.initialize(ShopManager.get());
+        
         // Register commands
         CommandRegistrationCallback.EVENT.register(ChestShopCommand::register);
         CommandRegistrationCallback.EVENT.register(ShopTradeCommand::register);

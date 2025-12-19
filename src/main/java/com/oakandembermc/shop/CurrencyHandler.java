@@ -1,24 +1,36 @@
 package com.oakandembermc.shop;
 
+import com.oakandembermc.ChestShopAPI;
+
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 
 /**
- * Handles currency operations using diamonds.
- * This is the default implementation that can later be extended or replaced
- * via a connector mod that integrates with EconomyMod.
+ * Handles currency operations.
+ * <p>
+ * By default, uses diamonds as currency. If a custom currency provider
+ * is registered via {@link ChestShopAPI#registerCurrencyProvider}, that
+ * provider will be used instead.
  */
 public class CurrencyHandler {
     
-    public static final String CURRENCY_NAME = "Diamond";
-    public static final String CURRENCY_NAME_PLURAL = "Diamonds";
-    
     /**
-     * Gets the player's current balance (diamond count).
+     * Gets the player's current balance.
+     * Uses custom provider if registered, otherwise counts diamonds.
      */
     public static int getBalance(PlayerEntity player) {
+        if (ChestShopAPI.hasCustomCurrencyProvider()) {
+            return ChestShopAPI.getCurrencyBalance(player);
+        }
+        return getDiamondCount(player);
+    }
+    
+    /**
+     * Counts diamonds in player inventory (default currency).
+     */
+    private static int getDiamondCount(PlayerEntity player) {
         int count = 0;
         PlayerInventory inv = player.getInventory();
         for (int i = 0; i < inv.size(); i++) {
@@ -38,7 +50,8 @@ public class CurrencyHandler {
     }
     
     /**
-     * Removes diamonds from the player's inventory.
+     * Removes currency from the player.
+     * Uses custom provider if registered, otherwise removes diamonds.
      * 
      * @param player The player
      * @param amount Amount to remove
@@ -49,6 +62,18 @@ public class CurrencyHandler {
             return false;
         }
         
+        if (ChestShopAPI.hasCustomCurrencyProvider()) {
+            ChestShopAPI.addCurrencyBalance(player, -amount);
+            return true;
+        }
+        
+        return withdrawDiamonds(player, amount);
+    }
+    
+    /**
+     * Removes diamonds from inventory (default currency).
+     */
+    private static boolean withdrawDiamonds(PlayerEntity player, int amount) {
         int remaining = amount;
         PlayerInventory inv = player.getInventory();
         
@@ -69,13 +94,26 @@ public class CurrencyHandler {
     }
     
     /**
-     * Adds diamonds to the player's inventory.
-     * If inventory is full, remaining diamonds are dropped at the player's feet.
+     * Adds currency to the player.
+     * Uses custom provider if registered, otherwise adds diamonds to inventory.
      * 
      * @param player The player
      * @param amount Amount to add
      */
     public static void deposit(PlayerEntity player, int amount) {
+        if (ChestShopAPI.hasCustomCurrencyProvider()) {
+            ChestShopAPI.addCurrencyBalance(player, amount);
+            return;
+        }
+        
+        depositDiamonds(player, amount);
+    }
+    
+    /**
+     * Adds diamonds to inventory (default currency).
+     * If inventory is full, remaining diamonds are dropped at the player's feet.
+     */
+    private static void depositDiamonds(PlayerEntity player, int amount) {
         int remaining = amount;
         
         while (remaining > 0) {
@@ -95,9 +133,20 @@ public class CurrencyHandler {
      * Formats a currency amount for display.
      */
     public static String format(int amount) {
-        if (amount == 1) {
-            return "1 " + CURRENCY_NAME;
-        }
-        return amount + " " + CURRENCY_NAME_PLURAL;
+        return ChestShopAPI.formatCurrency(amount);
+    }
+    
+    /**
+     * Gets the singular currency name.
+     */
+    public static String getCurrencyName() {
+        return ChestShopAPI.getCurrencyName();
+    }
+    
+    /**
+     * Gets the plural currency name.
+     */
+    public static String getCurrencyNamePlural() {
+        return ChestShopAPI.getCurrencyNamePlural();
     }
 }

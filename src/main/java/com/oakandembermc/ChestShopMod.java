@@ -1,14 +1,23 @@
 package com.oakandembermc;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
 import java.io.File;
+import java.nio.file.Path;
 
+import com.oakandembermc.command.ChestShopCommand;
+import com.oakandembermc.command.ShopTradeCommand;
 import com.oakandembermc.config.ChestShopConfig;
 import com.oakandembermc.config.ConfigSyncPayload;
 import com.oakandembermc.networking.PayloadRegistrar;
+import com.oakandembermc.shop.ShopHologramManager;
+import com.oakandembermc.shop.ShopInteractionHandler;
+import com.oakandembermc.shop.ShopManager;
 
 /**
  * Main server-side entry point for the ChestShop mod.
@@ -33,9 +42,27 @@ public class ChestShopMod implements ModInitializer {
             storageFolder.mkdirs();
         }
 
-        // Future: Initialize shop manager, commands, etc.
-        // ShopManager.initialize(storageFolder);
-        // ChestShopCommand.register();
+        // Initialize shop manager
+        ShopManager.initialize(storageFolder.toPath());
+        
+        // Register commands
+        CommandRegistrationCallback.EVENT.register(ChestShopCommand::register);
+        CommandRegistrationCallback.EVENT.register(ShopTradeCommand::register);
+        
+        // Register interaction handler
+        ShopInteractionHandler.register();
+        
+        // Register world load/unload events for holograms
+        ServerWorldEvents.LOAD.register((server, world) -> {
+            // Delay hologram creation slightly to ensure world is ready
+            server.execute(() -> {
+                ShopHologramManager.refreshAllHolograms(world);
+            });
+        });
+        
+        ServerWorldEvents.UNLOAD.register((server, world) -> {
+            ShopHologramManager.removeAllHolograms(world);
+        });
 
         // Register player join listener to sync config
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {

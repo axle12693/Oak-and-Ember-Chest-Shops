@@ -2,13 +2,11 @@ package com.oakandembermc;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
 import java.io.File;
-import java.nio.file.Path;
 
 import com.oakandembermc.command.ChestShopCommand;
 import com.oakandembermc.command.ShopTradeCommand;

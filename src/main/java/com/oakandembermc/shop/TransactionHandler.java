@@ -1,7 +1,5 @@
 package com.oakandembermc.shop;
 
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.Item;
@@ -80,8 +78,8 @@ public class TransactionHandler {
         giveItemsToPlayer(player, item, quantity);
         
         // 4. Add currency to shop chest (for owner to collect)
-        addItemsToInventory(chestInventory, new ItemStack(CurrencyHandler.CURRENCY_NAME.equals("Diamond") ? 
-                net.minecraft.item.Items.DIAMOND : net.minecraft.item.Items.DIAMOND, price));
+        // Note: Physical currency (diamonds) is added to chest for owner
+        addItemsToInventory(chestInventory, new ItemStack(net.minecraft.item.Items.DIAMOND, price));
         
         return TransactionResult.SUCCESS;
     }
@@ -158,7 +156,7 @@ public class TransactionHandler {
                 message = Text.literal("Shop chest is full!").formatted(Formatting.RED);
                 break;
             case BUYER_INSUFFICIENT_FUNDS:
-                message = Text.literal("You don't have enough " + CurrencyHandler.CURRENCY_NAME_PLURAL + "!")
+                message = Text.literal("You don't have enough " + CurrencyHandler.getCurrencyNamePlural() + "!")
                         .formatted(Formatting.RED);
                 break;
             case BUYER_INVENTORY_FULL:
@@ -171,7 +169,7 @@ public class TransactionHandler {
                 message = Text.literal("This shop is currently inactive.").formatted(Formatting.YELLOW);
                 break;
             case OWNER_INSUFFICIENT_FUNDS:
-                message = Text.literal("Shop doesn't have enough " + CurrencyHandler.CURRENCY_NAME_PLURAL + " to buy!")
+                message = Text.literal("Shop doesn't have enough " + CurrencyHandler.getCurrencyNamePlural() + " to buy!")
                         .formatted(Formatting.RED);
                 break;
             default:

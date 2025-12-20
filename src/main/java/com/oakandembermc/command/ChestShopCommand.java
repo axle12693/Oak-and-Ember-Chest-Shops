@@ -12,7 +12,6 @@ import com.oakandembermc.shop.ShopMode;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.block.ChestBlock;
-import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;

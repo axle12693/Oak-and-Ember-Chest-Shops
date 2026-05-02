@@ -9,12 +9,16 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
  * Call registerPayloads() early in mod initialization.
  */
 public class PayloadRegistrar {
+    private PayloadRegistrar() {
+        /* This utility class should not be instantiated */
+    }
+
     public static boolean registered = false;
 
     public static void registerPayloads() {
         if (!registered) {
             // Config sync payload (server to client)
-            PayloadTypeRegistry.playS2C().register(ConfigSyncPayload.ID, ConfigSyncPayload.CODEC);
+            PayloadTypeRegistry.clientboundPlay().register(ConfigSyncPayload.ID, ConfigSyncPayload.CODEC);
 
             // Future: Add chest shop specific payloads here
             // e.g., ShopCreateRequestPayload, ShopDataSyncPayload, etc.

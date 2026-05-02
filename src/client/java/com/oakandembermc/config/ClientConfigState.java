@@ -6,6 +6,10 @@ package com.oakandembermc.config;
  * Use this to check config values on the client side.
  */
 public class ClientConfigState {
+    private ClientConfigState() {
+        /* This utility class should not be instantiated */
+    }
+
     private static boolean chestShopsEnabled = true;
     private static int maxShopsPerPlayer = -1;
     private static int shopCreationCost = 0;
@@ -15,15 +19,15 @@ public class ClientConfigState {
     /**
      * Update the client config state from a server sync packet.
      */
-    public static void updateFromServer(boolean chestShopsEnabled, int maxShopsPerPlayer, 
-                                         int shopCreationCost, int transactionTax) {
+    public static void updateFromServer(boolean chestShopsEnabled, int maxShopsPerPlayer,
+            int shopCreationCost, int transactionTax) {
         ClientConfigState.chestShopsEnabled = chestShopsEnabled;
         ClientConfigState.maxShopsPerPlayer = maxShopsPerPlayer;
         ClientConfigState.shopCreationCost = shopCreationCost;
         ClientConfigState.transactionTax = transactionTax;
         ClientConfigState.synced = true;
-        System.out.println("ChestShop mod: Config synced from server - enabled=" + chestShopsEnabled + 
-                ", maxShops=" + maxShopsPerPlayer + ", creationCost=" + shopCreationCost + 
+        System.out.println("ChestShop mod: Config synced from server - enabled=" + chestShopsEnabled +
+                ", maxShops=" + maxShopsPerPlayer + ", creationCost=" + shopCreationCost +
                 ", tax=" + transactionTax + "%");
     }
 

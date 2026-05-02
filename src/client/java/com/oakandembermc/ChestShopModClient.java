@@ -15,7 +15,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
  */
 @Environment(EnvType.CLIENT)
 public class ChestShopModClient implements ClientModInitializer {
-    
+
     @Override
     public void onInitializeClient() {
         // Register config sync handler

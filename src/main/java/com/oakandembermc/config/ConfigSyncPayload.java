@@ -1,34 +1,33 @@
 package com.oakandembermc.config;
 
-import net.minecraft.network.RegistryByteBuf;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.codec.PacketCodecs;
-import net.minecraft.network.packet.CustomPayload;
-import net.minecraft.util.Identifier;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 
 /**
  * Payload to sync config options from server to client.
  * Sent when a player joins and when config changes.
  */
 public record ConfigSyncPayload(
-        boolean chestShopsEnabled,
-        int maxShopsPerPlayer,
-        int shopCreationCost,
-        int transactionTax
-) implements CustomPayload {
-    
-    public static final CustomPayload.Id<ConfigSyncPayload> ID = new CustomPayload.Id<>(
-            Identifier.of("chestshop", "config_sync"));
+                boolean chestShopsEnabled,
+                int maxShopsPerPlayer,
+                int shopCreationCost,
+                int transactionTax) implements CustomPacketPayload {
 
-    public static final PacketCodec<RegistryByteBuf, ConfigSyncPayload> CODEC = PacketCodec.tuple(
-            PacketCodecs.BOOLEAN, ConfigSyncPayload::chestShopsEnabled,
-            PacketCodecs.INTEGER, ConfigSyncPayload::maxShopsPerPlayer,
-            PacketCodecs.INTEGER, ConfigSyncPayload::shopCreationCost,
-            PacketCodecs.INTEGER, ConfigSyncPayload::transactionTax,
-            ConfigSyncPayload::new);
+        public static final CustomPacketPayload.Type<ConfigSyncPayload> ID = new CustomPacketPayload.Type<>(
+                        Identifier.fromNamespaceAndPath("chestshop", "config_sync"));
 
-    @Override
-    public CustomPayload.Id<? extends CustomPayload> getId() {
-        return ID;
-    }
+        public static final StreamCodec<RegistryFriendlyByteBuf, ConfigSyncPayload> CODEC = StreamCodec.composite(
+                        ByteBufCodecs.BOOL, ConfigSyncPayload::chestShopsEnabled,
+                        ByteBufCodecs.VAR_INT, ConfigSyncPayload::maxShopsPerPlayer,
+                        ByteBufCodecs.VAR_INT, ConfigSyncPayload::shopCreationCost,
+                        ByteBufCodecs.VAR_INT, ConfigSyncPayload::transactionTax,
+                        ConfigSyncPayload::new);
+
+        @Override
+        public CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
+                return ID;
+        }
 }

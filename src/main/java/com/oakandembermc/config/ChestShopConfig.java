@@ -115,13 +115,15 @@ public class ChestShopConfig {
     private static ChestShopConfig load() {
         if (!Files.exists(configPath)) {
             // Copy default config from bundled resources
-            try (InputStream defaultConfig = ChestShopConfig.class.getResourceAsStream("/data/" + ChestShopMod.MOD_ID + "/storagefolder/chestshop_config.json")) {
+            try (InputStream defaultConfig = ChestShopConfig.class
+                    .getResourceAsStream("/data/" + ChestShopMod.MOD_ID + "/storagefolder/chestshop_config.json")) {
                 if (defaultConfig != null) {
                     Files.createDirectories(configPath.getParent());
                     Files.copy(defaultConfig, configPath, StandardCopyOption.REPLACE_EXISTING);
                     System.out.println("ChestShop mod: Created default config from bundled resources at " + configPath);
                 } else {
-                    System.err.println("ChestShop mod: Default chestshop_config.json not found in mod resources! Creating with defaults.");
+                    System.err.println(
+                            "ChestShop mod: Default chestshop_config.json not found in mod resources! Creating with defaults.");
                     ChestShopConfig config = new ChestShopConfig();
                     config.save();
                     return config;

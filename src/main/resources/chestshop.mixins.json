@@ -1,11 +1,9 @@
 {
 	"required": true,
 	"package": "com.oakandembermc.mixin",
-	"compatibilityLevel": "JAVA_21",
-	"mixins": [
-	],
-	"client": [
-	],
+	"compatibilityLevel": "JAVA_25",
+	"mixins": [],
+	"client": [],
 	"injectors": {
 		"defaultRequire": 1
 	}

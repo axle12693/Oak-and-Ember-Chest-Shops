@@ -1,158 +1,146 @@
 package com.oakandembermc.shop;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.decoration.DisplayEntity.BillboardMode;
-import net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.ChatFormatting;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.entity.Display;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.ValueInput;
 
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Manages floating text displays above shop chests using Text Display entities.
- */
 public class ShopHologramManager {
-    
-    // Scoreboard tag used to identify our holograms reliably
+    private ShopHologramManager() {
+        /* This utility class should not be instantiated */
+    }
+
     private static final String HOLOGRAM_TAG = "chestshop_hologram";
-    
-    // Track holograms by shop ID
+
     private static final Map<UUID, UUID> shopToHologram = new ConcurrentHashMap<>();
-    
-    /**
-     * Creates or updates the hologram for a shop.
-     */
-    public static void updateHologram(ChestShop shop, ServerWorld world) {
-        // Remove existing hologram if any
+
+    public static void updateHologram(ChestShop shop, ServerLevel world) {
         removeHologram(shop, world);
-        
+
         ShopEntry entry = shop.getEntry();
         if (entry == null || !shop.isActive()) {
-            return; // No hologram needed for unconfigured/inactive shops
+            return;
         }
-        
+
         BlockPos pos = shop.getPosition();
-        
-        // Build display text based on mode
+
         String itemName = getSimpleItemName(entry.getItemIdString());
         String modeIndicator;
-        Formatting modeColor;
+        ChatFormatting modeColor;
         switch (entry.getMode()) {
             case SELL:
                 modeIndicator = "SELLING";
-                modeColor = Formatting.GREEN;
+                modeColor = ChatFormatting.GREEN;
                 break;
             case BUY:
                 modeIndicator = "BUYING";
-                modeColor = Formatting.YELLOW;
+                modeColor = ChatFormatting.YELLOW;
                 break;
             case BOTH:
                 modeIndicator = "BUY/SELL";
-                modeColor = Formatting.AQUA;
+                modeColor = ChatFormatting.AQUA;
                 break;
             default:
                 modeIndicator = "SHOP";
-                modeColor = Formatting.WHITE;
+                modeColor = ChatFormatting.WHITE;
         }
-        
-        // Format: [SELLING] Diamond Sword - 16x for 5◆
-        Text displayText = Text.literal("[" + modeIndicator + "] ").formatted(modeColor)
-                .append(Text.literal(itemName).formatted(Formatting.WHITE))
-                .append(Text.literal(" - " + entry.getQuantityPerTransaction() + "x for " + entry.getTotalPrice() + "◆").formatted(Formatting.GRAY));
-        
-        // Create Text Display entity
-        TextDisplayEntity hologram = new TextDisplayEntity(EntityType.TEXT_DISPLAY, world);
-        
-        // Position above the chest (centered)
+
+        Component displayText = Component.literal("[" + modeIndicator + "] ").withStyle(modeColor)
+                .append(Component.literal(itemName).withStyle(ChatFormatting.WHITE))
+                .append(Component
+                        .literal(" - " + entry.getQuantityPerTransaction() + "x for " + entry.getTotalPrice() + "◆")
+                        .withStyle(ChatFormatting.GRAY));
+
+        Display.TextDisplay hologram = new Display.TextDisplay(EntityType.TEXT_DISPLAY, world);
+
         double x = pos.getX() + 0.5;
-        double y = pos.getY() + 1.3;  // Above the chest
+        double y = pos.getY() + 1.3;
         double z = pos.getZ() + 0.5;
-        
-        hologram.refreshPositionAndAngles(x, y, z, 0, 0);
-        
-        // Set display properties via DataTracker (the internal mechanism for synced entity data)
-        hologram.setText(displayText);
-        hologram.setBillboardMode(BillboardMode.CENTER);  // Always face the player
-        hologram.setBackground(0x40000000);  // Semi-transparent black background (ARGB)
-        hologram.setLineWidth(200);
-        
-        // Add our identification tag for reliable cleanup
-        hologram.addCommandTag(HOLOGRAM_TAG);
-        // Also add shop-specific tag for targeted removal
-        hologram.addCommandTag("shop_" + shop.getShopId().toString());
-        
-        boolean spawned = world.spawnEntity(hologram);
-        
+
+        // Build NBT to configure the display entity properties via the load path,
+        // since Display setters are private in MC 26.1.
+        CompoundTag displayNbt = new CompoundTag();
+
+        ComponentSerialization.CODEC
+                .encodeStart(world.registryAccess().createSerializationContext(NbtOps.INSTANCE), displayText)
+                .result()
+                .ifPresent((Tag textNbt) -> displayNbt.put("text", textNbt));
+
+        displayNbt.putString(Display.TAG_BILLBOARD, "center");
+        displayNbt.putInt("background", 0x40000000);
+        displayNbt.putInt("line_width", 200);
+
+        ValueInput input = TagValueInput.create(ProblemReporter.DISCARDING, world.registryAccess(), displayNbt);
+        hologram.load(input);
+
+        // Re-apply position; load() resets it to 0,0,0 since Pos was absent from NBT.
+        hologram.setPos(x, y, z);
+
+        hologram.addTag(HOLOGRAM_TAG);
+        hologram.addTag("shop_" + shop.getShopId().toString());
+
+        boolean spawned = world.addFreshEntity(hologram);
+
         if (spawned) {
-            shopToHologram.put(shop.getShopId(), hologram.getUuid());
+            shopToHologram.put(shop.getShopId(), hologram.getUUID());
         }
     }
-    
-    /**
-     * Removes the hologram for a shop.
-     */
-    public static void removeHologram(ChestShop shop, ServerWorld world) {
+
+    public static void removeHologram(ChestShop shop, ServerLevel world) {
         UUID hologramId = shopToHologram.remove(shop.getShopId());
         if (hologramId != null) {
-            var entity = world.getEntity(hologramId);
+            Entity entity = world.getEntity(hologramId);
             if (entity != null) {
                 entity.discard();
             }
         }
     }
-    
-    /**
-     * Refreshes all holograms in a world (called on server start/world load).
-     */
-    public static void refreshAllHolograms(ServerWorld world) {
-        String dimensionId = world.getRegistryKey().getValue().toString();
-        
-        // First, clean up any existing shop holograms in the world
-        // This handles holograms that were saved with the world
+
+    public static void refreshAllHolograms(ServerLevel world) {
+        String dimensionId = world.dimension().identifier().toString();
+
         cleanupOldHolograms(world);
-        
-        // Clear our tracking map for this dimension
+
         shopToHologram.clear();
-        
-        // Create fresh holograms for all shops
+
         for (ChestShop shop : ShopManager.get().getAllShops()) {
             if (shop.getDimensionId().equals(dimensionId)) {
                 updateHologram(shop, world);
             }
         }
     }
-    
-    /**
-     * Removes any old shop holograms from the world.
-     * Uses scoreboard tags for reliable identification.
-     */
-    private static void cleanupOldHolograms(ServerWorld world) {
-        // Find all entities with our hologram tag and remove them
-        world.getEntitiesByType(EntityType.TEXT_DISPLAY, entity -> 
-            entity.getCommandTags().contains(HOLOGRAM_TAG)
-        ).forEach(Entity::discard);
+
+    private static void cleanupOldHolograms(ServerLevel world) {
+        world.getEntities(EntityType.TEXT_DISPLAY,
+                entity -> entity.entityTags().contains(HOLOGRAM_TAG)).forEach(Entity::discard);
     }
-    
-    /**
-     * Removes all holograms (called on server stop).
-     */
-    public static void removeAllHolograms(ServerWorld world) {
-        String dimensionId = world.getRegistryKey().getValue().toString();
-        
+
+    public static void removeAllHolograms(ServerLevel world) {
+        String dimensionId = world.dimension().identifier().toString();
+
         for (ChestShop shop : ShopManager.get().getAllShops()) {
             if (shop.getDimensionId().equals(dimensionId)) {
                 removeHologram(shop, world);
             }
         }
-        
+
         shopToHologram.clear();
     }
-    
+
     private static String getSimpleItemName(String itemId) {
         String name = itemId;
         if (name.contains(":")) {
@@ -163,8 +151,8 @@ public class ShopHologramManager {
         for (String part : parts) {
             if (!part.isEmpty()) {
                 result.append(Character.toUpperCase(part.charAt(0)))
-                      .append(part.substring(1))
-                      .append(" ");
+                        .append(part.substring(1))
+                        .append(" ");
             }
         }
         return result.toString().trim();

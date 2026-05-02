@@ -2,208 +2,189 @@ package com.oakandembermc.shop;
 
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.ChestBlock;
-import net.minecraft.block.entity.ChestBlockEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Container;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
 
-/**
- * Handles player interactions with chest shops.
- */
 public class ShopInteractionHandler {
-    
-    /**
-     * Registers the block use callback for shop interactions and block break listener.
-     */
+    private ShopInteractionHandler() {
+        /* This utility class should not be instantiated */
+    }
+
     public static void register() {
         UseBlockCallback.EVENT.register(ShopInteractionHandler::onUseBlock);
         PlayerBlockBreakEvents.BEFORE.register(ShopInteractionHandler::onBlockBreak);
     }
-    
-    /**
-     * Handles block breaking - cleans up shop and hologram if a shop chest is broken.
-     */
-    private static boolean onBlockBreak(World world, PlayerEntity player, BlockPos pos, BlockState state, /* nullable */ net.minecraft.block.entity.BlockEntity blockEntity) {
-        // Only handle on server side
-        if (world.isClient()) {
-            return true; // Allow break to proceed
+
+    private static boolean onBlockBreak(Level world, Player player, BlockPos pos, BlockState state,
+            BlockEntity blockEntity) {
+        if (world.isClientSide()) {
+            return true;
         }
-        
-        // Only care about chests
+
         if (!(state.getBlock() instanceof ChestBlock)) {
             return true;
         }
-        
-        // Check if this is a shop
+
         ChestShop shop = ShopManager.get().getShopAt(pos, world);
         if (shop == null) {
-            return true; // Not a shop, allow normal breaking
+            return true;
         }
-        
-        ServerPlayerEntity serverPlayer = (ServerPlayerEntity) player;
-        
-        // Only owner or ops can break shop chests
-        if (!shop.isOwner(player.getUuid()) && !serverPlayer.hasPermissionLevel(2)) {
-            serverPlayer.sendMessage(Text.literal("You cannot break someone else's shop!").formatted(Formatting.RED), false);
-            return false; // Cancel the break
+
+        ServerPlayer serverPlayer = (ServerPlayer) player;
+
+        if (!shop.isOwner(player.getUUID()) && !world.getServer().getPlayerList().isOp(serverPlayer.nameAndId())) {
+            serverPlayer.sendSystemMessage(
+                    Component.literal("You cannot break someone else's shop!").withStyle(ChatFormatting.RED));
+            return false;
         }
-        
-        // Clean up hologram before the shop is deleted
-        ShopHologramManager.removeHologram(shop, (ServerWorld) world);
-        
-        // Delete the shop
+
+        ShopHologramManager.removeHologram(shop, (ServerLevel) world);
         ShopManager.get().deleteShop(shop.getShopId());
-        
-        serverPlayer.sendMessage(Text.literal("Shop removed.").formatted(Formatting.YELLOW), false);
-        
-        return true; // Allow the chest to be broken
+
+        serverPlayer.sendSystemMessage(Component.literal("Shop removed.").withStyle(ChatFormatting.YELLOW));
+
+        return true;
     }
-    
-    private static ActionResult onUseBlock(PlayerEntity player, World world, Hand hand, BlockHitResult hitResult) {
-        // Only handle on server side
-        if (world.isClient()) {
-            return ActionResult.PASS;
+
+    private static InteractionResult onUseBlock(Player player, Level world, InteractionHand hand,
+            BlockHitResult hitResult) {
+        if (world.isClientSide()) {
+            return InteractionResult.PASS;
         }
-        
-        // Only handle main hand to avoid double-firing
-        if (hand != Hand.MAIN_HAND) {
-            return ActionResult.PASS;
+
+        if (hand != InteractionHand.MAIN_HAND) {
+            return InteractionResult.PASS;
         }
-        
+
         BlockPos pos = hitResult.getBlockPos();
         BlockState state = world.getBlockState(pos);
-        
-        // Only handle chests
+
         if (!(state.getBlock() instanceof ChestBlock)) {
-            return ActionResult.PASS;
+            return InteractionResult.PASS;
         }
-        
-        // Check if this is a shop
+
         ChestShop shop = ShopManager.get().getShopAt(pos, world);
         if (shop == null) {
-            return ActionResult.PASS; // Not a shop, let normal chest opening happen
+            return InteractionResult.PASS;
         }
-        
-        ServerPlayerEntity serverPlayer = (ServerPlayerEntity) player;
-        
-        // If owner or op, allow normal chest access
-        if (shop.isOwner(player.getUuid()) || serverPlayer.hasPermissionLevel(2)) {
-            serverPlayer.sendMessage(Text.literal("Your shop. Use /cs info to manage.").formatted(Formatting.GRAY), true);
-            return ActionResult.PASS; // Let owner open the chest normally
+
+        ServerPlayer serverPlayer = (ServerPlayer) player;
+
+        if (shop.isOwner(player.getUUID()) || world.getServer().getPlayerList().isOp(serverPlayer.nameAndId())) {
+            serverPlayer.sendOverlayMessage(
+                    Component.literal("Your shop. Use /cs info to manage.").withStyle(ChatFormatting.GRAY));
+            return InteractionResult.PASS;
         }
-        
-        // For non-owners, show shop interface and BLOCK chest access
+
         showShopInterface(serverPlayer, shop, world, pos);
-        
-        // Block normal chest opening for customers
-        return ActionResult.SUCCESS;
+
+        return InteractionResult.SUCCESS;
     }
-    
-    /**
-     * Shows the shop interface to a customer.
-     */
-    private static void showShopInterface(ServerPlayerEntity player, ChestShop shop, World world, BlockPos pos) {
+
+    private static void showShopInterface(ServerPlayer player, ChestShop shop, Level world, BlockPos pos) {
         if (!shop.isActive()) {
-            player.sendMessage(Text.literal("This shop is currently closed.").formatted(Formatting.YELLOW), false);
+            player.sendSystemMessage(
+                    Component.literal("This shop is currently closed.").withStyle(ChatFormatting.YELLOW));
             return;
         }
-        
+
         ShopEntry entry = shop.getEntry();
         if (entry == null) {
-            player.sendMessage(Text.literal("This shop has no item for sale.").formatted(Formatting.YELLOW), false);
+            player.sendSystemMessage(
+                    Component.literal("This shop has no item for sale.").withStyle(ChatFormatting.YELLOW));
             return;
         }
-        
-        // Get chest inventory for stock checking
-        Inventory chestInventory = null;
+
+        Container chestInventory = null;
         if (world.getBlockEntity(pos) instanceof ChestBlockEntity) {
-            chestInventory = ChestBlock.getInventory((ChestBlock) world.getBlockState(pos).getBlock(), 
+            chestInventory = ChestBlock.getContainer((ChestBlock) world.getBlockState(pos).getBlock(),
                     world.getBlockState(pos), world, pos, true);
         }
-        
-        player.sendMessage(Text.literal(""), false);
-        player.sendMessage(Text.literal("═══ " + shop.getOwnerName() + "'s Shop ═══").formatted(Formatting.GOLD), false);
-        
-        // Show item name
+
+        player.sendSystemMessage(Component.empty());
+        player.sendSystemMessage(
+                Component.literal("═══ " + shop.getOwnerName() + "'s Shop ═══").withStyle(ChatFormatting.GOLD));
+
         String itemName = getSimpleItemName(entry.getItemIdString());
-        player.sendMessage(Text.literal("Item: ").formatted(Formatting.GRAY)
-                .append(Text.literal(itemName).formatted(Formatting.WHITE)), false);
-        
-        // Show trade info based on mode
+        player.sendSystemMessage(Component.literal("Item: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(itemName).withStyle(ChatFormatting.WHITE)));
+
         if (entry.canPlayerBuy()) {
             int stock = chestInventory != null ? countItemInInventory(chestInventory, entry.getItem()) : 0;
-            Formatting stockColor = stock >= entry.getQuantityPerTransaction() ? Formatting.GREEN : Formatting.RED;
-            
-            player.sendMessage(Text.literal("BUY: ").formatted(Formatting.GREEN)
-                    .append(Text.literal(entry.getQuantityPerTransaction() + "x").formatted(Formatting.WHITE))
-                    .append(Text.literal(" for ").formatted(Formatting.GRAY))
-                    .append(Text.literal(entry.getTotalPrice() + " ◆").formatted(Formatting.AQUA))
-                    .append(Text.literal(" [" + stock + " in stock]").formatted(stockColor)), false);
+            ChatFormatting stockColor = stock >= entry.getQuantityPerTransaction() ? ChatFormatting.GREEN
+                    : ChatFormatting.RED;
+
+            player.sendSystemMessage(Component.literal("BUY: ").withStyle(ChatFormatting.GREEN)
+                    .append(Component.literal(entry.getQuantityPerTransaction() + "x").withStyle(ChatFormatting.WHITE))
+                    .append(Component.literal(" for ").withStyle(ChatFormatting.GRAY))
+                    .append(Component.literal(entry.getTotalPrice() + " ◆").withStyle(ChatFormatting.AQUA))
+                    .append(Component.literal(" [" + stock + " in stock]").withStyle(stockColor)));
         }
-        
+
         if (entry.canPlayerSell()) {
             int shopDiamonds = chestInventory != null ? countItemInInventory(chestInventory, Items.DIAMOND) : 0;
-            Formatting fundsColor = shopDiamonds >= entry.getTotalPrice() ? Formatting.GREEN : Formatting.RED;
-            
-            player.sendMessage(Text.literal("SELL: ").formatted(Formatting.YELLOW)
-                    .append(Text.literal(entry.getQuantityPerTransaction() + "x").formatted(Formatting.WHITE))
-                    .append(Text.literal(" for ").formatted(Formatting.GRAY))
-                    .append(Text.literal(entry.getTotalPrice() + " ◆").formatted(Formatting.AQUA))
-                    .append(Text.literal(" [" + shopDiamonds + " ◆ available]").formatted(fundsColor)), false);
+            ChatFormatting fundsColor = shopDiamonds >= entry.getTotalPrice() ? ChatFormatting.GREEN
+                    : ChatFormatting.RED;
+
+            player.sendSystemMessage(Component.literal("SELL: ").withStyle(ChatFormatting.YELLOW)
+                    .append(Component.literal(entry.getQuantityPerTransaction() + "x").withStyle(ChatFormatting.WHITE))
+                    .append(Component.literal(" for ").withStyle(ChatFormatting.GRAY))
+                    .append(Component.literal(entry.getTotalPrice() + " ◆").withStyle(ChatFormatting.AQUA))
+                    .append(Component.literal(" [" + shopDiamonds + " ◆ available]").withStyle(fundsColor)));
         }
-        
-        // Show player's balance
-        player.sendMessage(Text.literal("Your diamonds: ").formatted(Formatting.GRAY)
-                .append(Text.literal(String.valueOf(CurrencyHandler.getBalance(player))).formatted(Formatting.AQUA)), false);
-        
-        // Show commands
-        player.sendMessage(Text.literal(""), false);
+
+        player.sendSystemMessage(Component.literal("Your diamonds: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(String.valueOf(CurrencyHandler.getBalance(player)))
+                        .withStyle(ChatFormatting.AQUA)));
+
+        player.sendSystemMessage(Component.empty());
         if (entry.canPlayerBuy() && entry.canPlayerSell()) {
-            player.sendMessage(Text.literal("Use /csbuy or /cssell").formatted(Formatting.GRAY), false);
+            player.sendSystemMessage(Component.literal("Use /csbuy or /cssell").withStyle(ChatFormatting.GRAY));
         } else if (entry.canPlayerBuy()) {
-            player.sendMessage(Text.literal("Use /csbuy to purchase").formatted(Formatting.GRAY), false);
+            player.sendSystemMessage(Component.literal("Use /csbuy to purchase").withStyle(ChatFormatting.GRAY));
         } else if (entry.canPlayerSell()) {
-            player.sendMessage(Text.literal("Use /cssell to sell").formatted(Formatting.GRAY), false);
+            player.sendSystemMessage(Component.literal("Use /cssell to sell").withStyle(ChatFormatting.GRAY));
         }
     }
-    
+
     private static String getSimpleItemName(String itemId) {
-        // Convert "minecraft:diamond_sword" to "Diamond Sword"
         String name = itemId;
         if (name.contains(":")) {
             name = name.substring(name.indexOf(":") + 1);
         }
-        // Convert underscores to spaces and capitalize
         String[] parts = name.split("_");
         StringBuilder result = new StringBuilder();
         for (String part : parts) {
             if (!part.isEmpty()) {
                 result.append(Character.toUpperCase(part.charAt(0)))
-                      .append(part.substring(1))
-                      .append(" ");
+                        .append(part.substring(1))
+                        .append(" ");
             }
         }
         return result.toString().trim();
     }
-    
-    private static int countItemInInventory(Inventory inventory, Item item) {
+
+    private static int countItemInInventory(Container inventory, Item item) {
         int count = 0;
-        for (int i = 0; i < inventory.size(); i++) {
-            ItemStack stack = inventory.getStack(i);
-            if (stack.isOf(item)) {
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (stack.is(item)) {
                 count += stack.getCount();
             }
         }

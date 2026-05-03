@@ -7,13 +7,13 @@ import net.minecraft.world.item.Item;
 public class ShopEntry {
 
     private final Identifier itemId;
-    private int pricePerUnit;
+    private int pricePerTransaction;
     private int quantityPerTransaction;
     private ShopMode mode;
 
-    public ShopEntry(Identifier itemId, int pricePerUnit, int quantityPerTransaction, ShopMode mode) {
+    public ShopEntry(Identifier itemId, int pricePerTransaction, int quantityPerTransaction, ShopMode mode) {
         this.itemId = itemId;
-        this.pricePerUnit = pricePerUnit;
+        this.pricePerTransaction = pricePerTransaction;
         this.quantityPerTransaction = quantityPerTransaction;
         this.mode = mode;
     }
@@ -30,16 +30,12 @@ public class ShopEntry {
         return BuiltInRegistries.ITEM.getValue(itemId);
     }
 
-    public int getPricePerUnit() {
-        return pricePerUnit;
-    }
-
     public int getQuantityPerTransaction() {
         return quantityPerTransaction;
     }
 
     public int getTotalPrice() {
-        return pricePerUnit * quantityPerTransaction;
+        return pricePerTransaction;
     }
 
     public ShopMode getMode() {
@@ -54,8 +50,8 @@ public class ShopEntry {
         return mode == ShopMode.BUY || mode == ShopMode.BOTH;
     }
 
-    public void setPricePerUnit(int price) {
-        this.pricePerUnit = Math.max(0, price);
+    public void setPricePerTransaction(int price) {
+        this.pricePerTransaction = Math.max(0, price);
     }
 
     public void setQuantityPerTransaction(int quantity) {

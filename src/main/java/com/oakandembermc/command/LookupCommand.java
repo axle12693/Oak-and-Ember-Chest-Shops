@@ -139,7 +139,7 @@ public class LookupCommand {
         ChestShop shop = match.shop;
         ShopEntry entry = match.entry;
 
-        String priceStr = CurrencyHandler.format(entry.getPricePerUnit());
+        String priceStr = CurrencyHandler.format(entry.getTotalPrice());
         String coords = shop.getPositionString();
         String dimension = formatDimension(shop.getDimensionId());
 

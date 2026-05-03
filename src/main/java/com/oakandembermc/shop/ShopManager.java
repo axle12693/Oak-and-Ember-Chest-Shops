@@ -174,7 +174,7 @@ public class ShopManager {
         for (ShopEntry entry : shop.getEntries()) {
             JsonObject entryJson = new JsonObject();
             entryJson.addProperty("itemId", entry.getItemIdString());
-            entryJson.addProperty("pricePerUnit", entry.getPricePerUnit());
+            entryJson.addProperty("pricePerTransaction", entry.getTotalPrice());
             entryJson.addProperty("quantity", entry.getQuantityPerTransaction());
             entryJson.addProperty("mode", entry.getMode().name());
             entriesArray.add(entryJson);

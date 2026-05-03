@@ -210,7 +210,7 @@ public class ChestShopCommand {
                     .append(Component.literal(entry.getItemIdString()).withStyle(ChatFormatting.WHITE)));
             player.sendSystemMessage(Component.literal("Trade: ").withStyle(ChatFormatting.GRAY)
                     .append(Component.literal(
-                            entry.getQuantityPerTransaction() + "x for " + entry.getPricePerUnit() + " diamond(s)")
+                            entry.getQuantityPerTransaction() + "x for " + entry.getTotalPrice() + " diamond(s)")
                             .withStyle(ChatFormatting.WHITE)));
             player.sendSystemMessage(Component.literal("Mode: ").withStyle(ChatFormatting.GRAY)
                     .append(Component.literal(modeName).withStyle(ChatFormatting.AQUA)));
